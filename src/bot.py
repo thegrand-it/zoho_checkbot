@@ -275,27 +275,53 @@ async def process_excel(file_path: str) -> str:
                 excel_data.append(f"    {i+1}. {col}")
             excel_data.append("")
             
-            # Add sample data (first 10 rows) to show structure if there's data
+            # For small datasets, include all data
+            # For larger datasets, show first 20 rows and last 5 rows to give better context
             if len(df) > 0:
-                excel_data.append("  Sample Data (first 10 rows):")
-                excel_data.append("  ```")
-                
-                # Create a formatted table representation
-                # Header
-                header = " | ".join([str(col) for col in df.columns])
-                excel_data.append(f"  {header}")
-                excel_data.append("  " + "-" * len(header))
-                
-                # Data rows (first 10)
-                for index, row in df.head(10).iterrows():
-                    row_data = " | ".join([str(val) if pd.notna(val) else "" for val in row])
-                    excel_data.append(f"  {row_data}")
-                
-                # Indicate if there are more rows
-                if len(df) > 10:
-                    excel_data.append(f"  ... and {len(df) - 10} more rows")
-                
-                excel_data.append("  ```")
+                if len(df) <= 30:
+                    # For smaller datasets, show all data
+                    excel_data.append("  All Data:")
+                    excel_data.append("  ```")
+                    
+                    # Create a formatted table representation
+                    # Header
+                    header = " | ".join([str(col) for col in df.columns])
+                    excel_data.append(f"  {header}")
+                    excel_data.append("  " + "-" * len(header))
+                    
+                    # All data rows
+                    for index, row in df.iterrows():
+                        row_data = " | ".join([str(val) if pd.notna(val) else "" for val in row])
+                        excel_data.append(f"  {row_data}")
+                    
+                    excel_data.append("  ```")
+                else:
+                    # For larger datasets, show first 20 rows and last 5 rows
+                    excel_data.append(f"  Data (First 20 rows and last 5 rows of {len(df)} total rows):")
+                    excel_data.append("  ```")
+                    
+                    # Create a formatted table representation
+                    # Header
+                    header = " | ".join([str(col) for col in df.columns])
+                    excel_data.append(f"  {header}")
+                    excel_data.append("  " + "-" * len(header))
+                    
+                    # First 20 data rows
+                    for index, row in df.head(20).iterrows():
+                        row_data = " | ".join([str(val) if pd.notna(val) else "" for val in row])
+                        excel_data.append(f"  {row_data}")
+                    
+                    # Separator
+                    excel_data.append("  ...")
+                    excel_data.append("  (middle rows omitted for brevity)")
+                    excel_data.append("  ...")
+                    
+                    # Last 5 data rows
+                    for index, row in df.tail(5).iterrows():
+                        row_data = " | ".join([str(val) if pd.notna(val) else "" for val in row])
+                        excel_data.append(f"  {row_data}")
+                    
+                    excel_data.append("  ```")
             else:
                 excel_data.append("  No data in this sheet")
             
@@ -481,7 +507,7 @@ async def answer_document_question(question: str, user_id: int) -> str:
         
 User's question: {question}
         
-Document content: {doc_context['content'][:8000]}  # Increased limit for better context
+Document content: {doc_context['content'][:15000]}  # Increased limit for better context
         
 Document type: {doc_context['file_type']}
         
