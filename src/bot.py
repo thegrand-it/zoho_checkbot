@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 import time
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import google.genai as genai
 from google.genai import types
@@ -130,7 +130,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     welcome_message = MESSAGES[language]['welcome']
     
-    await update.message.reply_text(welcome_message)
+    # Create custom keyboard menu
+    keyboard = [
+        [KeyboardButton("/help"), KeyboardButton("/batch")],
+        [KeyboardButton("/search"), KeyboardButton("/english")],
+        [KeyboardButton("/burmese"), KeyboardButton("/batch_status")],
+        [KeyboardButton("/batch_analyze"), KeyboardButton("/batch_clear")]
+    ]
+    
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    
+    await update.message.reply_text(welcome_message, reply_markup=reply_markup)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
@@ -138,8 +148,34 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     help_text = MESSAGES[language]['help']
     
-    await update.message.reply_text(help_text)
+    # Create custom keyboard menu
+    keyboard = [
+        [KeyboardButton("/help"), KeyboardButton("/batch")],
+        [KeyboardButton("/search"), KeyboardButton("/english")],
+        [KeyboardButton("/burmese"), KeyboardButton("/batch_status")],
+        [KeyboardButton("/batch_analyze"), KeyboardButton("/batch_clear")]
+    ]
+    
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    
+    await update.message.reply_text(help_text, reply_markup=reply_markup)
 
+async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the bot menu."""
+    user_id = update.effective_user.id
+    language = get_user_language(user_id)
+    
+    # Create custom keyboard menu
+    keyboard = [
+        [KeyboardButton("/help"), KeyboardButton("/batch")],
+        [KeyboardButton("/search"), KeyboardButton("/english")],
+        [KeyboardButton("/burmese"), KeyboardButton("/batch_status")],
+        [KeyboardButton("/batch_analyze"), KeyboardButton("/batch_clear")]
+    ]
+    
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=False)
+    
+    await update.message.reply_text("Choose a command from the menu below:", reply_markup=reply_markup)
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Search the web for current information."""
@@ -575,6 +611,7 @@ def main():
     application.add_handler(CommandHandler("batch_clear", batch_clear_command))
     application.add_handler(CommandHandler("batch_status", batch_status_command))
     application.add_handler(CommandHandler("search", search_command))
+    application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
