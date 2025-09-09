@@ -4,7 +4,8 @@ import logging
 import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types
 from dotenv import load_dotenv
 import pandas as pd
 import pdfplumber
@@ -24,9 +25,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configure Gemini AI
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-2.5-flash')
+# Configure the client
+client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+
+# Define the grounding tool
+grounding_tool = types.Tool(
+    google_search=types.GoogleSearch()
+)
+
+# Configure generation settings with grounding
+config = types.GenerateContentConfig(
+    tools=[grounding_tool]
+)
 
 # Default language
 DEFAULT_LANGUAGE = 'en'
@@ -129,6 +139,35 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = MESSAGES[language]['help']
     
     await update.message.reply_text(help_text)
+
+
+async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Search the web for current information."""
+    try:
+        user_id = update.effective_user.id
+        language = get_user_language(user_id)
+        
+        # Get the search query from the message
+        query = update.message.text[8:]  # Remove "/search " from the beginning
+        
+        if not query.strip():
+            help_text = "Please provide a search query. Example: /search current exchange rates"
+            await update.message.reply_text(help_text)
+            return
+        
+        # Use grounding model to search the web
+        prompt = f"{query}"
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=config,
+        )
+        
+        await update.message.reply_text(response.text)
+    except Exception as e:
+        logger.error(f"Error in search_command: {e}")
+        language = get_user_language(user_id)
+        await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def english_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch to English language"""
@@ -239,7 +278,7 @@ async def process_excel(file_path: str) -> str:
         return None
 
 async def chat_with_gemini(message: str, user_id: int) -> str:
-    """Chat with Gemini AI for general conversations with context tracking"""
+    """Chat with Gemini AI for general conversations with context tracking and web grounding"""
     try:
         language = get_user_language(user_id)
         lang_name = "English" if language == "en" else "Burmese"
@@ -258,6 +297,7 @@ async def chat_with_gemini(message: str, user_id: int) -> str:
         1. Respond in {lang_name} language.
         2. Focus on financial topics when relevant
         3. Be helpful with general questions about finance, accounting, or document processing
+        4. For current information, use web search to get up-to-date data
         
 Conversation history:
 {'\n'.join([f"{msg['role']}: {msg['parts'][0]}" for msg in conversation])}
@@ -266,7 +306,12 @@ User's latest message: {message}
         
 Please provide a helpful and concise response with proper markdown formatting where appropriate."""
         
-        response = model.generate_content(prompt)
+        # Use grounding model for general conversations to access current information
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=config,
+        )
         
         # Add AI response to conversation history
         if response.text:
@@ -386,7 +431,7 @@ async def batch_status_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def answer_document_question(question: str, user_id: int) -> str:
-    """Answer user questions about processed documents."""
+    """Answer user questions about processed documents with grounding for current info."""
     try:
         language = get_user_language(user_id)
         lang_name = "English" if language == "en" else "Burmese"
@@ -411,10 +456,17 @@ IMPORTANT:
 4. Respond in {lang_name} language.
 5. Provide specific, accurate answers based on the document content
 6. If the question cannot be answered with the provided data, say so clearly
+7. If the question asks about current/recent financial data, use web search to get up-to-date information
         
 Please provide a focused and helpful response to the user's question."""
         
-        response = model.generate_content(prompt)
+        # Use grounding model for all document questions to access current information
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=config,
+        )
+            
         return response.text
     except Exception as e:
         logger.error(f"Error answering document question: {e}")
@@ -522,6 +574,7 @@ def main():
     application.add_handler(CommandHandler("batch_analyze", batch_analyze_command))
     application.add_handler(CommandHandler("batch_clear", batch_clear_command))
     application.add_handler(CommandHandler("batch_status", batch_status_command))
+    application.add_handler(CommandHandler("search", search_command))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
