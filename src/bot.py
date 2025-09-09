@@ -33,9 +33,10 @@ grounding_tool = types.Tool(
     google_search=types.GoogleSearch()
 )
 
-# Configure generation settings with grounding
+# Configure generation settings with grounding and temperature
 config = types.GenerateContentConfig(
-    tools=[grounding_tool]
+    tools=[grounding_tool],
+    temperature=0.3
 )
 
 # Default language
