@@ -120,7 +120,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     welcome_message = MESSAGES[language]['welcome']
     
-    await update.message.reply_text(welcome_message, parse_mode='Markdown')
+    await update.message.reply_text(welcome_message)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
@@ -128,7 +128,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     help_text = MESSAGES[language]['help']
     
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+    await update.message.reply_text(help_text)
 
 async def english_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch to English language"""
@@ -137,7 +137,7 @@ async def english_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     message = MESSAGES[language]['language_changed']
     
-    await update.message.reply_text(message, parse_mode='Markdown')
+    await update.message.reply_text(message)
 
 async def burmese_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch to Burmese language"""
@@ -146,7 +146,7 @@ async def burmese_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     language = get_user_language(user_id)
     message = MESSAGES[language]['language_changed']
     
-    await update.message.reply_text(message, parse_mode='Markdown')
+    await update.message.reply_text(message)
 
 async def process_pdf(file_path: str) -> str:
     """Process PDF file and extract text content with better structure."""
@@ -286,18 +286,18 @@ async def batch_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Initialize batch context
         initialize_batch_context(user_id)
         
-        batch_msg = ("*📁 Batch Processing Mode Activated!*\n\n"
+        batch_msg = ("📁 Batch Processing Mode Activated!\n\n"
                      "Please upload multiple PDF and/or Excel files. I'll process them all and then you can ask me to compare them or analyze them together.\n\n"
-                     "*Commands:*\n"
-                     "- `/batch_analyze` - Analyze all uploaded files together\n"
-                     "- `/batch_clear` - Clear the current batch\n"
-                     "- `/batch_status` - Check the status of your batch")
+                     "Commands:\n"
+                     "- /batch_analyze - Analyze all uploaded files together\n"
+                     "- /batch_clear - Clear the current batch\n"
+                     "- /batch_status - Check the status of your batch")
         
-        await update.message.reply_text(batch_msg, parse_mode='Markdown')
+        await update.message.reply_text(batch_msg)
     except Exception as e:
         logger.error(f"Error in batch_command: {e}")
         language = get_user_language(user_id)
-        # Use plain text for error messages to avoid Markdown issues
+        # Use plain text for error messages
         await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def batch_analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -308,7 +308,7 @@ async def batch_analyze_command(update: Update, context: ContextTypes.DEFAULT_TY
         
         batch_context = get_batch_context(user_id)
         if not batch_context or len(batch_context["files"]) == 0:
-            await update.message.reply_text("*❌ No files in batch.* Please upload files first or use `/batch` to start.", parse_mode='Markdown')
+            await update.message.reply_text("❌ No files in batch. Please upload files first or use /batch to start.")
             return
         
         # Mark batch as processing
@@ -321,10 +321,7 @@ async def batch_analyze_command(update: Update, context: ContextTypes.DEFAULT_TY
         combined_content.append("")
         
         for i, file_info in enumerate(batch_context["files"], 1):
-            # Escape special characters in file names for display
-            file_name = file_info['file_name'].replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-            file_type = file_info['file_type'].replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-            combined_content.append(f"File {i}: {file_name} ({file_type})")
+            combined_content.append(f"File {i}: {file_info['file_name']} ({file_info['file_type']})")
             combined_content.append("-" * 30)
             combined_content.append(file_info["content"])
             combined_content.append("")
@@ -336,13 +333,13 @@ async def batch_analyze_command(update: Update, context: ContextTypes.DEFAULT_TY
         # Store combined context for questions
         set_user_document_context(user_id, combined_text, "Batch")
         
-        confirmation_msg = ("*✅ Batch of " + str(len(batch_context['files'])) + " files processed successfully!* "
+        confirmation_msg = (f"✅ Batch of {len(batch_context['files'])} files processed successfully! "
                            "You can now ask me questions about all these documents together.")
-        await update.message.reply_text(confirmation_msg, parse_mode='Markdown')
+        await update.message.reply_text(confirmation_msg)
     except Exception as e:
         logger.error(f"Error in batch_analyze_command: {e}")
         language = get_user_language(user_id)
-        # Use plain text for error messages to avoid Markdown issues
+        # Use plain text for error messages
         await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def batch_clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -352,11 +349,11 @@ async def batch_clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         language = get_user_language(user_id)
         
         clear_batch_context(user_id)
-        await update.message.reply_text("*✅ Batch cleared successfully!*", parse_mode='Markdown')
+        await update.message.reply_text("✅ Batch cleared successfully!")
     except Exception as e:
         logger.error(f"Error in batch_clear_command: {e}")
         language = get_user_language(user_id)
-        # Use plain text for error messages to avoid Markdown issues
+        # Use plain text for error messages
         await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def batch_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -367,28 +364,25 @@ async def batch_status_command(update: Update, context: ContextTypes.DEFAULT_TYP
         
         batch_context = get_batch_context(user_id)
         if not batch_context:
-            await update.message.reply_text("*❌ No active batch.* Use `/batch` to start.", parse_mode='Markdown')
+            await update.message.reply_text("❌ No active batch. Use /batch to start.")
             return
         
-        # Build status message carefully to avoid Markdown parsing issues
-        status_msg = "*📁 Batch Status*\n\n"
+        # Build status message
+        status_msg = "📁 Batch Status\n\n"
         status_msg += f"Files processed: {len(batch_context['files'])}\n\n"
         
         if batch_context['files']:
             status_msg += "Files in batch:\n"
             for i, file_info in enumerate(batch_context['files'], 1):
-                # Escape special characters that might break Markdown
-                file_name = file_info['file_name'].replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-                file_type = file_info['file_type'].replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-                status_msg += f"{i}. {file_name} ({file_type})\n"
+                status_msg += f"{i}. {file_info['file_name']} ({file_info['file_type']})\n"
         
-        status_msg += "\nUse `/batch_analyze` to analyze all files together."
+        status_msg += "\nUse /batch_analyze to analyze all files together."
         
-        await update.message.reply_text(status_msg, parse_mode='Markdown')
+        await update.message.reply_text(status_msg)
     except Exception as e:
         logger.error(f"Error in batch_status_command: {e}")
         language = get_user_language(user_id)
-        # Use plain text for error messages to avoid Markdown issues
+        # Use plain text for error messages
         await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def answer_document_question(question: str, user_id: int) -> str:
@@ -441,7 +435,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Send acknowledgment
         if not batch_context or not batch_context.get("processing", False):
-            await update.message.reply_text(MESSAGES[language]['processing'], parse_mode='Markdown')
+            await update.message.reply_text(MESSAGES[language]['processing'])
         
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -468,26 +462,23 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Check if user wants to analyze the batch
                     if batch_context.get("processing", False):
                         # User has indicated they want to analyze the batch
-                        # Escape special characters for safe Markdown display
-                        safe_file_type = file_type.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-                        safe_file_name = file_name.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`')
-                        batch_info = f"*✅ Added {safe_file_type} file: {safe_file_name}* to batch. {len(batch_context['files'])} files processed so far."
-                        await update.message.reply_text(batch_info, parse_mode='Markdown')
+                        batch_info = f"✅ Added {file_type} file: {file_name} to batch. {len(batch_context['files'])} files processed so far."
+                        await update.message.reply_text(batch_info)
                 else:
                     # Single file processing
                     set_user_document_context(user_id, content, file_type)
                     
                     # Send confirmation that document is ready for questions
-                    confirmation_msg = f"*✅ {file_type} file processed successfully!* You can now ask me questions about this document."
-                    await update.message.reply_text(confirmation_msg, parse_mode='Markdown')
+                    confirmation_msg = f"✅ {file_type} file processed successfully! You can now ask me questions about this document."
+                    await update.message.reply_text(confirmation_msg)
             else:
-                await update.message.reply_text(MESSAGES[language]['processing_error'], parse_mode='Markdown')
+                await update.message.reply_text(MESSAGES[language]['processing_error'])
                 
     except Exception as e:
         logger.error(f"Error handling document: {e}")
         user_id = update.effective_user.id
         language = get_user_language(user_id)
-        await update.message.reply_text(MESSAGES[language]['general_error'], parse_mode='Markdown')
+        await update.message.reply_text(MESSAGES[language]['general_error'])
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text messages."""
@@ -496,7 +487,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text
     
     if user_message.lower() in ['hi', 'hello', 'hey']:
-        await update.message.reply_text(MESSAGES[language]['greeting'], parse_mode='Markdown')
+        await update.message.reply_text(MESSAGES[language]['greeting'])
     else:
         # Check if user has a document context to ask questions about
         doc_context = get_user_document_context(user_id)
@@ -504,7 +495,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # User is asking a question about their document
             response = await answer_document_question(user_message, user_id)
             try:
-                await update.message.reply_text(response, parse_mode='Markdown')
+                await update.message.reply_text(response)
             except:
                 # If markdown fails, send as plain text
                 await update.message.reply_text(response)
@@ -512,7 +503,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # General chat when no document is processed
             response = await chat_with_gemini(user_message, user_id)
             try:
-                await update.message.reply_text(response, parse_mode='Markdown')
+                await update.message.reply_text(response)
             except:
                 # If markdown fails, send as plain text
                 await update.message.reply_text(response)
